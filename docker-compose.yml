@@ -1,0 +1,8 @@
+services:
+  software-repo:
+    build: .
+    container_name: software-repo-python
+    volumes:
+      - /mnt/repo:/mnt/repo:ro
+    ports:
+      - "5000:5000"
