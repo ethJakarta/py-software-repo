@@ -21,7 +21,7 @@ def get_software_list():
                 "name": name,
                 "version": version,
                 "category": category,
-                "description": f"Offline installer untuk {name}",
+                "description": f"{name}",
                 "relative_path": relative_path.replace("\\", "/")
             })
     return software_list
