@@ -62,12 +62,12 @@
       {% for sw in softwares %}
         <div data-name="{{ sw.name|lower }}" data-category="{{ sw.category }}"
              class="software-card bg-white rounded-2xl shadow-md p-6 hover:shadow-lg transition">
-          <img src="/static/default.png" class="w-16 h-16 mb-4 mx-auto" alt="icon">
+          <img src="../static/default.png" class="w-16 h-16 mb-4 mx-auto" alt="icon">
           <h2 class="text-xl font-semibold text-gray-800 text-center">{{ sw.name }}</h2>
           <p class="text-sm text-gray-500 text-center mb-2">
-            v{{ sw.version }} — {{ sw.category }}
+            v.{{ sw.version }} | {{ sw.category }}
           </p>
-          <p class="text-gray-600 text-sm mb-4 text-center">{{ sw.description }}</p>
+          <p class="text-gray-600 text-sm mb-4 text-center">{{ sw.size }}</p>
           <div class="flex justify-center">
             <a href="/download/{{ sw.relative_path }}"
                class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">

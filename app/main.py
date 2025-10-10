@@ -7,22 +7,43 @@ BASE_DIR = "/mnt/repo"
 
 def get_software_list():
     software_list = []
+    
+    def format_size(size_bytes):
+        """Konversi ukuran file (byte) ke format KB, MB, GB, dst."""
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+            if size_bytes < 1024:
+                return f"{size_bytes:.2f} {unit}"
+            size_bytes /= 1024
+        return f"{size_bytes:.2f} PB"
+
     for root, dirs, files in os.walk(BASE_DIR):
         for file in files:
             if file.startswith('.'):
                 continue
-            relative_path = os.path.relpath(os.path.join(root, file), BASE_DIR)
+
+            file_path = os.path.join(root, file)
+            relative_path = os.path.relpath(file_path, BASE_DIR)
             category = os.path.relpath(root, BASE_DIR).split(os.sep)[0] or "Uncategorized"
+
             name, ext = os.path.splitext(file)
             parts = name.split('_')
             name = parts[0]
-            version = parts[1] if len(parts) > 1 else "1.0.0"
+            version = parts[1] if len(parts) > 1 else "Unknown"
+
+            # 🔹 Ambil ukuran file dan ubah ke format manusiawi
+            try:
+                file_size_bytes = os.path.getsize(file_path)
+                file_size = format_size(file_size_bytes)
+            except OSError:
+                file_size = "Unknown"
+
             software_list.append({
                 "name": name,
                 "version": version,
                 "category": category,
                 "description": f"{name}",
-                "relative_path": relative_path.replace("\\", "/")
+                "relative_path": relative_path.replace("\\", "/"),
+                "size": file_size,  # ← ditambahkan di sini
             })
     return software_list
 
