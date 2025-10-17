@@ -4,40 +4,25 @@
   <meta charset="UTF-8" />
   <title>Software Repository</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    /* Animasi fade + scale */
-    .fade-enter { opacity: 0; transform: scale(0.95); }
-    .fade-enter-active { opacity: 1; transform: scale(1); transition: all 0.3s ease-in-out; }
-    .fade-exit { opacity: 1; transform: scale(1); }
-    .fade-exit-active { opacity: 0; transform: scale(0.95); transition: all 0.3s ease-in-out; }
-  </style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body class="bg-gray-50 min-h-screen p-8">
   <h1 class="text-4xl font-bold mb-8 text-center">Software Repository</h1>
 
   <!-- 🔍 Search & Filter -->
   <div class="flex flex-col md:flex-row justify-center gap-4 mb-8">
-  <div class="relative w-full md:w-1/3">
-    <input
-      id="searchInput"
-      type="text"
-      placeholder="Cari software..."
-      class="border border-gray-300 rounded-lg p-2 w-full pr-10 focus:ring-2 focus:ring-blue-500"
-    />
-    <!-- ✖ inside search box -->
-    <button
-      id="clearSearchBtn"
-      type="button"
-      class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 hidden"
-      title="Hapus pencarian"
-    >
-      <!-- SVG icon for ✖ -->
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-           viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-      </svg>
-    </button>
-  </div>
+    <div class="relative w-full md:w-1/3">
+      <input id="searchInput" type="text" placeholder="Cari software..."
+        class="border border-gray-300 rounded-lg p-2 w-full pr-10 focus:ring-2 focus:ring-blue-500"/>
+      <button id="clearSearchBtn" type="button"
+        class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 hidden"
+        title="Hapus pencarian">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+             viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
 
     <select id="categoryFilter" class="border border-gray-300 rounded-lg p-2 w-full md:w-1/4">
       <option value="">Semua Kategori</option>
@@ -61,185 +46,17 @@
       </select>
     </div>
 
-    <!-- Mode tombol -->
+    <!-- Mode tampilan -->
     <div class="flex items-center space-x-1">
-      <button id="gridViewBtn"
-        class="px-3 py-1 text-sm rounded-l-lg bg-blue-600 text-white hover:bg-blue-700">
-        🧱 Grid
-      </button>
-      <button id="listViewBtn"
-        class="px-3 py-1 text-sm rounded-r-lg bg-gray-200 hover:bg-gray-300 text-gray-700">
-        📋 List
-      </button>
+      <button id="gridViewBtn" class="px-3 py-1 text-sm rounded-l-lg bg-blue-600 text-white hover:bg-blue-700">🧱 Grid</button>
+      <button id="listViewBtn" class="px-3 py-1 text-sm rounded-r-lg bg-gray-200 hover:bg-gray-300 text-gray-700">📋 List</button>
     </div>
   </div>
 
-  {% if softwares|length == 0 %}
-    <p class="text-gray-600 text-center">Tidak ada software ditemukan.</p>
-  {% else %}
-    <div id="softwareGrid" class="grid grid-cols-3 gap-6 transition-all duration-300">
-      {% for sw in softwares %}
-        <div data-name="{{ sw.name|lower }}" data-category="{{ sw.category }}"
-             class="software-card bg-white rounded-2xl shadow-md p-6 hover:shadow-lg transition">
-          <img src="../static/default.png" class="w-16 h-16 mb-4 mx-auto" alt="icon">
-          <h2 class="text-xl font-semibold text-gray-800 text-center">{{ sw.name }}</h2>
-          <p class="text-sm text-gray-500 text-center mb-2">
-            v {{ sw.version }} | {{ sw.category }}
-          </p>
-          <p class="text-gray-600 text-sm mb-4 text-center">{{ sw.size }}</p>
-          <div class="flex justify-center">
-            <a href="/download/{{ sw.relative_path }}"
-               class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
-               Download
-            </a>
-          </div>
-        </div>
-      {% endfor %}
-    </div>
-  {% endif %}
+  <div id="softwareGrid" class="grid grid-cols-3 gap-6 transition-all duration-300"></div>
 
-<script>
-const grid = document.getElementById('softwareGrid');
-const colSelect = document.getElementById('columnSelector');
-const colContainer = document.getElementById('columnSelectorContainer');
-const gridBtn = document.getElementById('gridViewBtn');
-const listBtn = document.getElementById('listViewBtn');
-const searchInput = document.getElementById('searchInput');
-const categoryFilter = document.getElementById('categoryFilter');
+  <div id="paginationContainer" class="flex justify-center mt-8 items-center gap-2 flex-wrap"></div>
 
-let isListView = false;
-const cards = Array.from(grid.querySelectorAll('.software-card'));
-cards.forEach(card => {
-  card.dataset.originalHtml = card.innerHTML;
-  card.dataset.originalClass = card.className;
-});
-
-function filterSoftwares() {
-  const search = searchInput.value.toLowerCase();
-  const category = categoryFilter.value.toLowerCase();
-  cards.forEach(card => {
-    const name = card.dataset.name.toLowerCase();
-    const cat = card.dataset.category.toLowerCase();
-    const matchSearch = name.includes(search);
-    const matchCategory = !category || cat === category;
-    card.style.display = (matchSearch && matchCategory) ? '' : 'none';
-  });
-}
-searchInput.addEventListener('input', filterSoftwares);
-categoryFilter.addEventListener('change', filterSoftwares);
-
-// ✖ Clear button inside search box
-const clearBtn = document.getElementById('clearSearchBtn');
-
-searchInput.addEventListener('input', () => {
-  clearBtn.classList.toggle('hidden', searchInput.value === '');
-  filterSoftwares();
-});
-
-clearBtn.addEventListener('click', () => {
-  searchInput.value = '';
-  clearBtn.classList.add('hidden');
-  filterSoftwares();
-  searchInput.focus(); // keep focus in the box
-});
-
-
-// Ubah jumlah kolom (hanya aktif saat grid)
-colSelect.addEventListener('change', (e) => {
-  if (!isListView) {
-    const cols = e.target.value;
-    grid.className = `grid grid-cols-${cols} gap-6 transition-all duration-300`;
-  }
-});
-
-// Helper animasi fade
-function fadeTransition(element, callback) {
-  element.classList.add('fade-exit');
-  element.classList.add('fade-exit-active');
-  setTimeout(() => {
-    callback();
-    element.classList.remove('fade-exit', 'fade-exit-active');
-    element.classList.add('fade-enter');
-    setTimeout(() => {
-      element.classList.add('fade-enter-active');
-      setTimeout(() => {
-        element.classList.remove('fade-enter', 'fade-enter-active');
-      }, 300);
-    }, 10);
-  }, 200);
-}
-
-// 🔹 GRID VIEW
-gridBtn.addEventListener('click', () => {
-  if (!isListView) return;
-  isListView = false;
-
-  fadeTransition(grid, () => {
-    colContainer.style.display = 'flex';
-    const cols = colSelect.value;
-    grid.className = `grid grid-cols-${cols} gap-6 transition-all duration-300`;
-
-    cards.forEach(card => {
-      card.innerHTML = card.dataset.originalHtml;
-      card.className = card.dataset.originalClass;
-    });
-  });
-
-  gridBtn.classList.add('bg-blue-600', 'text-white');
-  listBtn.classList.remove('bg-blue-600', 'text-white');
-  listBtn.classList.add('bg-gray-200', 'text-gray-700');
-
-  filterSoftwares();
-});
-
-// 🔹 LIST VIEW
-listBtn.addEventListener('click', () => {
-  if (isListView) return;
-  isListView = true;
-
-  fadeTransition(grid, () => {
-    colContainer.style.display = 'none';
-    grid.className = 'flex flex-col space-y-4 transition-all duration-300';
-
-    cards.forEach(card => {
-      const parser = document.createElement('div');
-      parser.innerHTML = card.dataset.originalHtml;
-
-      const title = parser.querySelector('h2');
-      const version = parser.querySelector('p.text-sm.text-gray-500');
-      const desc = parser.querySelector('p.text-gray-600');
-      const link = parser.querySelector('a');
-      const img = parser.querySelector('img');
-
-      card.className = "software-card flex items-center justify-between bg-white rounded-2xl shadow-md p-4 hover:shadow-lg transition";
-      card.innerHTML = `
-        <div class="flex items-center gap-4">
-          <img src="${img?.src || '/static/default.png'}" class="w-12 h-12 sm:w-16 sm:h-16 rounded">
-          <div>
-            <h2 class="text-base sm:text-lg font-semibold text-gray-800">${title?.textContent || ''}</h2>
-            <p class="text-xs sm:text-sm text-gray-500">${version?.textContent || ''}</p>
-            <p class="hidden sm:block text-gray-600 text-sm">${desc?.textContent || ''}</p>
-          </div>
-        </div>
-        <div class="ml-auto flex items-center">
-          <a href="${link?.href || '#'}"
-             class="bg-blue-600 text-white px-2 py-2 sm:px-4 sm:py-2 rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-1">
-             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
-             </svg>
-             <span class="hidden sm:inline">Download</span>
-          </a>
-        </div>
-      `;
-    });
-  });
-
-  listBtn.classList.add('bg-blue-600', 'text-white');
-  gridBtn.classList.remove('bg-blue-600', 'text-white');
-  gridBtn.classList.add('bg-gray-200', 'text-gray-700');
-
-  filterSoftwares();
-});
-</script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>

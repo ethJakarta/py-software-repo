@@ -1,15 +1,18 @@
-from flask import Flask, render_template, send_from_directory, abort
-import os
+from flask import Flask, render_template, send_from_directory, abort, jsonify, request
+import os, time
 
 app = Flask(__name__)
+BASE_DIR = "/mnt/repo"  # ubah jika repositori-mu di lokasi lain
 
-BASE_DIR = "/mnt/repo"
+# Cache sederhana (10 detik)
+_cache = {"data": None, "timestamp": 0}
 
 def get_software_list():
+    if _cache["data"] and time.time() - _cache["timestamp"] < 10:
+        return _cache["data"]
+
     software_list = []
-    
     def format_size(size_bytes):
-        """Konversi ukuran file (byte) ke format KB, MB, GB, dst."""
         for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
             if size_bytes < 1024:
                 return f"{size_bytes:.2f} {unit}"
@@ -30,10 +33,8 @@ def get_software_list():
             name = parts[0]
             version = parts[1] if len(parts) > 1 else "Unknown"
 
-            # 🔹 Ambil ukuran file dan ubah ke format manusiawi
             try:
-                file_size_bytes = os.path.getsize(file_path)
-                file_size = format_size(file_size_bytes)
+                file_size = format_size(os.path.getsize(file_path))
             except OSError:
                 file_size = "Unknown"
 
@@ -41,17 +42,46 @@ def get_software_list():
                 "name": name,
                 "version": version,
                 "category": category,
-                "description": f"{name}",
                 "relative_path": relative_path.replace("\\", "/"),
-                "size": file_size,  # ← ditambahkan di sini
+                "size": file_size,
             })
+
+    _cache["data"] = software_list
+    _cache["timestamp"] = time.time()
     return software_list
+
 
 @app.route('/')
 def index():
+    categories = sorted(set(sw["category"] for sw in get_software_list()))
+    return render_template('index.html', categories=categories)
+
+
+@app.route('/api/softwares')
+def api_softwares():
     softwares = get_software_list()
-    categories = sorted(set(sw["category"] for sw in softwares))
-    return render_template('index.html', softwares=softwares, categories=categories)
+    search = request.args.get("search", "").lower()
+    category = request.args.get("category", "").lower()
+    page = int(request.args.get("page", 1))
+    per_page = int(request.args.get("per_page", 9))
+
+    filtered = [
+        sw for sw in softwares
+        if (search in sw["name"].lower()) and (not category or sw["category"].lower() == category)
+    ]
+
+    total = len(filtered)
+    start = (page - 1) * per_page
+    end = start + per_page
+    paginated = filtered[start:end]
+
+    return jsonify({
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "softwares": paginated
+    })
+
 
 @app.route('/download/<path:filename>')
 def download(filename):
@@ -63,5 +93,6 @@ def download(filename):
         abort(404)
     return send_from_directory(BASE_DIR, safe_path, as_attachment=True)
 
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
