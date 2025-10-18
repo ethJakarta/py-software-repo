@@ -32,30 +32,39 @@
     </select>
   </div>
 
-  <!-- 🔲 Header -->
-  <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
+  <!-- 🔲 Header + Pagination -->
+  <div class="flex flex-wrap items-center mb-6 gap-4">
+    <!-- Kiri -->
     <h1 class="text-2xl font-semibold text-gray-800">Daftar Software</h1>
 
-    <!-- Jumlah kolom -->
-    <div id="columnSelectorContainer" class="flex items-center space-x-2">
-      <label for="columnSelector" class="text-sm text-gray-600">Jumlah Kolom:</label>
-      <select id="columnSelector" class="border rounded-lg px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500">
-        <option value="3" selected>3</option>
-        <option value="4">4</option>
-        <option value="5">5</option>
-      </select>
-    </div>
+    <!-- Tengah (pagination) -->
+    <div id="paginationContainer" class="flex justify-center flex-grow items-center gap-2"></div>
 
-    <!-- Mode tampilan -->
-    <div class="flex items-center space-x-1">
-      <button id="gridViewBtn" class="px-3 py-1 text-sm rounded-l-lg bg-blue-600 text-white hover:bg-blue-700">🧱 Grid</button>
-      <button id="listViewBtn" class="px-3 py-1 text-sm rounded-r-lg bg-gray-200 hover:bg-gray-300 text-gray-700">📋 List</button>
+    <!-- Kanan -->
+    <div class="flex items-center space-x-4 ml-auto">
+      <!-- Jumlah kolom -->
+      <div id="columnSelectorContainer" class="flex items-center space-x-2">
+        <label for="columnSelector" class="text-sm text-gray-600">Jumlah Kolom:</label>
+        <select id="columnSelector"
+          class="border rounded-lg px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500">
+          <option value="3" selected>3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+      </div>
+
+      <!-- Mode tampilan -->
+      <div class="flex items-center space-x-1">
+        <button id="gridViewBtn"
+          class="px-3 py-1 text-sm rounded-l-lg bg-blue-600 text-white hover:bg-blue-700">🧱 Grid</button>
+        <button id="listViewBtn"
+          class="px-3 py-1 text-sm rounded-r-lg bg-gray-200 hover:bg-gray-300 text-gray-700">📋 List</button>
+      </div>
     </div>
   </div>
 
+  <!-- 🔹 Grid konten -->
   <div id="softwareGrid" class="grid grid-cols-3 gap-6 transition-all duration-300"></div>
-
-  <div id="paginationContainer" class="flex justify-center mt-8 items-center gap-2 flex-wrap"></div>
 
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
