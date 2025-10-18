@@ -1,98 +1,182 @@
-from flask import Flask, render_template, send_from_directory, abort, jsonify, request
-import os, time
+from flask import Flask, render_template, jsonify, request, send_from_directory, abort
+import sqlite3, os
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-BASE_DIR = "/mnt/repo"  # ubah jika repositori-mu di lokasi lain
 
-# Cache sederhana (10 detik)
-_cache = {"data": None, "timestamp": 0}
+# ---------------------------
+# 🔹 Konfigurasi dasar
+# ---------------------------
+BASE_DIR = os.path.dirname(__file__)
+DB_PATH = os.path.join(BASE_DIR, "data", "software.db")
+IMAGES_DIR = os.path.join(BASE_DIR, "static", "images")
+UPLOAD_FOLDER = IMAGES_DIR
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 
-def get_software_list():
-    if _cache["data"] and time.time() - _cache["timestamp"] < 10:
-        return _cache["data"]
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-    software_list = []
-    def format_size(size_bytes):
-        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-            if size_bytes < 1024:
-                return f"{size_bytes:.2f} {unit}"
-            size_bytes /= 1024
-        return f"{size_bytes:.2f} PB"
+# ---------------------------
+# 🔹 Helper
+# ---------------------------
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-    for root, dirs, files in os.walk(BASE_DIR):
-        for file in files:
-            if file.startswith('.'):
-                continue
-
-            file_path = os.path.join(root, file)
-            relative_path = os.path.relpath(file_path, BASE_DIR)
-            category = os.path.relpath(root, BASE_DIR).split(os.sep)[0] or "Uncategorized"
-
-            name, ext = os.path.splitext(file)
-            parts = name.split('_')
-            name = parts[0]
-            version = parts[1] if len(parts) > 1 else "Unknown"
-
-            try:
-                file_size = format_size(os.path.getsize(file_path))
-            except OSError:
-                file_size = "Unknown"
-
-            software_list.append({
-                "name": name,
-                "version": version,
-                "category": category,
-                "relative_path": relative_path.replace("\\", "/"),
-                "size": file_size,
-            })
-
-    _cache["data"] = software_list
-    _cache["timestamp"] = time.time()
-    return software_list
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+# ---------------------------
+# 🔹 Halaman utama
+# ---------------------------
 @app.route('/')
 def index():
-    categories = sorted(set(sw["category"] for sw in get_software_list()))
-    return render_template('index.html', categories=categories)
+    conn = get_db_connection()
+    categories = [row['category'] for row in conn.execute("SELECT DISTINCT category FROM software ORDER BY category").fetchall()]
+    tags = [row['tag'] for row in conn.execute("SELECT DISTINCT tag FROM software WHERE tag != ''").fetchall()]
+    conn.close()
+
+    unique_tags = sorted(set(t.strip() for tag in tags for t in tag.split(',') if t.strip()))
+    return render_template('index.html', categories=categories, tags=unique_tags)
 
 
-@app.route('/api/softwares')
-def api_softwares():
-    softwares = get_software_list()
+# ---------------------------
+# 🔹 API Software List (AJAX)
+# ---------------------------
+@app.route('/api/software')
+def api_software():
     search = request.args.get("search", "").lower()
     category = request.args.get("category", "").lower()
+    tag = request.args.get("tag", "").lower()
     page = int(request.args.get("page", 1))
     per_page = int(request.args.get("per_page", 9))
 
-    filtered = [
-        sw for sw in softwares
-        if (search in sw["name"].lower()) and (not category or sw["category"].lower() == category)
-    ]
+    conn = get_db_connection()
+    query = "SELECT * FROM software WHERE 1=1"
+    params = []
 
-    total = len(filtered)
-    start = (page - 1) * per_page
-    end = start + per_page
-    paginated = filtered[start:end]
+    if search:
+        query += " AND LOWER(name) LIKE ?"
+        params.append(f"%{search}%")
+
+    if category:
+        query += " AND LOWER(category) = ?"
+        params.append(category)
+
+    if tag:
+        query += " AND LOWER(tag) LIKE ?"
+        params.append(f"%{tag}%")
+
+    total = conn.execute(f"SELECT COUNT(*) FROM ({query})", params).fetchone()[0]
+    offset = (page - 1) * per_page
+    query += " LIMIT ? OFFSET ?"
+    params.extend([per_page, offset])
+    rows = conn.execute(query, params).fetchall()
+    conn.close()
+
+    softwares = [dict(row) for row in rows]
+    total_pages = max(1, (total + per_page - 1) // per_page)
 
     return jsonify({
-        "total": total,
         "page": page,
         "per_page": per_page,
-        "softwares": paginated
+        "total": total,
+        "pages": total_pages,
+        "items": softwares
     })
 
 
+# ---------------------------
+# 🔹 Download file
+# ---------------------------
 @app.route('/download/<path:filename>')
 def download(filename):
     safe_path = os.path.normpath(filename)
-    full_path = os.path.join(BASE_DIR, safe_path)
-    if not full_path.startswith(BASE_DIR):
+    base_path = "/mnt/repo"
+    full_path = os.path.join(base_path, safe_path)
+
+    if not full_path.startswith(base_path):
         abort(403)
     if not os.path.exists(full_path):
         abort(404)
-    return send_from_directory(BASE_DIR, safe_path, as_attachment=True)
+    return send_from_directory(base_path, safe_path, as_attachment=True)
 
 
+# ---------------------------
+# 🔹 Static Images
+# ---------------------------
+@app.route('/images/<path:filename>')
+def serve_image(filename):
+    return send_from_directory(IMAGES_DIR, filename)
+
+
+# ====================================================
+# 🔸 ADMIN ROUTES
+# ====================================================
+
+@app.route('/admin')
+def admin_page():
+    """Halaman admin untuk CRUD software"""
+    return render_template('admin.html')
+
+
+@app.route('/api/admin/software', methods=['GET'])
+def get_software_admin():
+    """Tampilkan semua software di panel admin"""
+    conn = get_db_connection()
+    rows = conn.execute("SELECT * FROM software ORDER BY id DESC").fetchall()
+    conn.close()
+    return jsonify([dict(row) for row in rows])
+
+
+@app.route('/api/admin/software', methods=['POST'])
+def add_software():
+    """Tambah software baru"""
+    data = request.form
+    file = request.files.get('image')
+
+    name = data.get('name')
+    version = data.get('version')
+    category = data.get('category')
+    description = data.get('description')
+    file_path = data.get('file_path')
+    size = data.get('size')
+    tag = data.get('tags', '')
+
+    # Upload gambar
+    image_path = None
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        save_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+        file.save(save_path)
+        image_path = f"/static/images/{filename}"
+
+    conn = get_db_connection()
+    conn.execute("""
+        INSERT INTO software (name, version, category, description, image_path, file_path, size, tag)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (name, version, category, description, image_path, file_path, size, tag))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"status": "success"})
+
+
+@app.route('/api/admin/software/<int:id>', methods=['DELETE'])
+def delete_software(id):
+    """Hapus software berdasarkan ID"""
+    conn = get_db_connection()
+    conn.execute("DELETE FROM software WHERE id = ?", (id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "deleted"})
+
+
+# ---------------------------
+# 🔹 Run server
+# ---------------------------
 if __name__ == '__main__':
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    os.makedirs(IMAGES_DIR, exist_ok=True)
     app.run(host='0.0.0.0', port=5000, debug=True)
