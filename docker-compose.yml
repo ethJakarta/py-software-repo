@@ -1,8 +1,29 @@
 services:
+  nginx:
+    image: nginx:stable
+    container_name: nginx-reverse
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - software-repo
+    networks:
+      - webnet
+
   software-repo:
     build: .
     container_name: software-repo-python
     volumes:
       - /mnt/repo:/mnt/repo:ro
-    ports:
-      - "5000:5000"
+    expose:
+      - "5000"
+    networks:
+      - webnet
+
+networks:
+  webnet:
+    driver: bridge

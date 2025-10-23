@@ -1,1 +1,29 @@
 *.swp
+# === Python cache ===
+__pycache__/
+*.py[cod]
+*.pyo
+
+# === Virtual environment ===
+venv/
+.env
+
+# === SSL Certificates (sensitive) ===
+nginx/ssl/
+
+# === Logs ===
+logs/
+*.log
+
+# === User uploads ===
+app/static/uploads/
+
+# === OS & Editor junk ===
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# === Docker related temporary ===
+*.pid
+*.sock
