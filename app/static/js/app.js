@@ -10,8 +10,9 @@ const paginationContainer = document.getElementById('paginationContainer');
 let isListView = false;
 let currentPage = 1;
 let perPage = 9;
+let slideDirection = 'right';
 
-// dropdown per page
+// Dropdown jumlah item per halaman
 const perPageSelect = document.createElement('select');
 perPageSelect.className = "border px-2 py-1 rounded text-sm";
 perPageSelect.innerHTML = `
@@ -24,10 +25,23 @@ paginationContainer.appendChild(perPageSelect);
 perPageSelect.addEventListener("change", () => {
   perPage = parseInt(perPageSelect.value);
   currentPage = 1;
-  loadSoftwares();
+  animateReload('right');
 });
 
-// 🔹 Fetch data
+// 🔹 Transisi animasi slide + fade
+function animateReload(direction = 'right') {
+  slideDirection = direction;
+  grid.classList.add("opacity-0", direction === 'right' ? "translate-x-10" : "-translate-x-10", "transition-all", "duration-150");
+
+  setTimeout(() => {
+    loadSoftwares().then(() => {
+      grid.classList.remove("opacity-0", "translate-x-10", "-translate-x-10");
+      grid.classList.add("opacity-100", "translate-x-0");
+    });
+  }, 250);
+}
+
+// 🔹 Fetch data dari API backend
 async function loadSoftwares() {
   const search = searchInput.value;
   const category = categoryFilter.value;
@@ -37,19 +51,19 @@ async function loadSoftwares() {
   renderPagination(data.total, data.page, data.per_page);
 }
 
-// 🔹 Render kartu software
+// 🔹 Render konten software cards
 function renderSoftwares(list) {
   grid.innerHTML = "";
   const cols = colSelect.value;
   grid.className = isListView
-    ? "flex flex-col space-y-4 transition-all duration-300"
-    : `grid grid-cols-${cols} gap-6 transition-all duration-300`;
+    ? "flex flex-col space-y-4 transition-all duration-150"
+    : `grid grid-cols-${cols} gap-6 transition-all duration-150`;
 
-  list.forEach(sw => {
+  list.forEach((sw, idx) => {
     const card = document.createElement("div");
     card.className = isListView
-      ? "flex items-center justify-between bg-white rounded-2xl shadow-md p-4 hover:shadow-lg transition"
-      : "bg-white rounded-2xl shadow-md p-6 hover:shadow-lg transition";
+      ? "flex items-center justify-between bg-white rounded-2xl shadow-md p-4 hover:shadow-lg transform opacity-0 translate-y-3 transition-all duration-150"
+      : "bg-white rounded-2xl shadow-md p-6 hover:shadow-lg transform opacity-0 translate-y-3 transition-all duration-150";
 
     card.innerHTML = isListView ? `
       <div class="flex items-center gap-4">
@@ -70,11 +84,18 @@ function renderSoftwares(list) {
         <a href="/download/${sw.relative_path}" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700">Download</a>
       </div>
     `;
+
     grid.appendChild(card);
+
+    // Efek muncul bertahap (staggered)
+    setTimeout(() => {
+      card.classList.remove("opacity-0", "translate-y-3");
+      card.classList.add("opacity-100", "translate-y-0");
+    }, 80 * idx);
   });
 }
 
-// 🔹 Pagination
+// 🔹 Pagination dengan animasi arah slide
 function renderPagination(total, page, perPage) {
   const totalPages = Math.ceil(total / perPage);
   paginationContainer.querySelectorAll("button.page-btn").forEach(btn => btn.remove());
@@ -83,18 +104,22 @@ function renderPagination(total, page, perPage) {
     const btn = document.createElement("button");
     btn.textContent = i;
     btn.className = `page-btn px-3 py-1 rounded border ${i === page ? "bg-blue-600 text-white" : "bg-white text-gray-700 hover:bg-gray-100"}`;
-    btn.addEventListener("click", () => { currentPage = i; loadSoftwares(); });
+    btn.addEventListener("click", () => {
+      slideDirection = i > currentPage ? 'right' : 'left';
+      currentPage = i;
+      animateReload(slideDirection);
+    });
     paginationContainer.insertBefore(btn, perPageSelect);
   }
 }
 
-// 🔹 Events
-categoryFilter.addEventListener("change", () => { currentPage = 1; loadSoftwares(); });
-searchInput.addEventListener("input", () => { currentPage = 1; loadSoftwares(); clearBtn.classList.toggle('hidden', searchInput.value === ''); });
-clearBtn.addEventListener("click", () => { searchInput.value = ''; clearBtn.classList.add('hidden'); loadSoftwares(); });
-gridBtn.addEventListener("click", () => { isListView = false; loadSoftwares(); });
-listBtn.addEventListener("click", () => { isListView = true; loadSoftwares(); });
-colSelect.addEventListener("change", () => { if (!isListView) loadSoftwares(); });
+// 🔹 Event listeners
+categoryFilter.addEventListener("change", () => { currentPage = 1; animateReload('right'); });
+searchInput.addEventListener("input", () => { currentPage = 1; animateReload('right'); clearBtn.classList.toggle('hidden', searchInput.value === ''); });
+clearBtn.addEventListener("click", () => { searchInput.value = ''; clearBtn.classList.add('hidden'); animateReload('left'); });
+gridBtn.addEventListener("click", () => { isListView = false; animateReload('left'); });
+listBtn.addEventListener("click", () => { isListView = true; animateReload('right'); });
+colSelect.addEventListener("change", () => { if (!isListView) animateReload('right'); });
 
-// Initial load
+// 🔹 Initial load
 loadSoftwares();
